@@ -1,0 +1,24 @@
+<%--
+ =================================================================
+  Licensed Materials - Property of IBM
+
+  WebSphere Commerce
+
+  (C) Copyright IBM Corp. 2009, 2014 All Rights Reserved.
+
+  US Government Users Restricted Rights - Use, duplication or
+  disclosure restricted by GSA ADP Schedule Contract with
+  IBM Corp.
+ =================================================================
+--%>
+<!-- BEGIN CommonJSPFToInclude.jspf -->
+
+	<%@ include file="ProgressBar.jspf"%>
+	<%@ include file="MessageDisplay.jspf"%>
+	<%@ include file="ComparePopup.jspf"%>
+	<%@ include file="InactivityWarningPopup.jspf"%>
+	<c:if test="${env_storePreviewLink}">
+		<%@ include file="PreviewModeTab.jspf"%>
+	</c:if>
+	
+<!-- END CommonJSPFToInclude.jspf -->

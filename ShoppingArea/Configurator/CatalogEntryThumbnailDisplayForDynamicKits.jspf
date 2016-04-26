@@ -1,0 +1,123 @@
+<%--
+ =================================================================
+  Licensed Materials - Property of IBM
+
+  WebSphere Commerce
+
+  (C) Copyright IBM Corp. 2011, 2014 All Rights Reserved.
+
+  US Government Users Restricted Rights - Use, duplication or
+  disclosure restricted by GSA ADP Schedule Contract with
+  IBM Corp.
+ =================================================================
+--%>
+<%--
+*****
+This fragment draws the Add To Cart and Configure DynamicKit buttons for a thumbnail display of a catentry.
+This fragment should only be used for a catentry of type DyanmicKit.
+
+Parameters required:
+	catalogEntryView: A CatalogEntryViewTypeImpl object for the current DyanmicKit. If null, parameters isDKPreConfigured and catEntryIdentifier must be set.
+
+Optional parameters:
+	isDKPreConfigured: This parameter can be set to indicate that the dynamic kit is pre-configured (hence can be added to the cart directly).
+	isDKConfigurable:  This parameter can be set to indicate that the dynamic kit is configurable (meaning the kit can be configured by a user). Default is true.
+	catEntryIdentifier: Is a unique identifier to differentiate the current catalog entry with respect to other ones 
+			    that may be displayed on the same page.
+
+
+This fragment is included in the following file(s):
+	Snippets\Catalog\CatalogEntryDisplay\CatalogEntryThumbnailDisplay.jsp
+	Snippets\Search\CatalogEntryThumbnailDisplay.jsp
+	Snippets\ReusableObjects\CatalogEntryDBThumbnailDisplay.jspf
+	Snippets\ReusableObjects\CatalogEntrySearchThumbnailDisplay.jspf 
+
+*****
+--%>
+<c:if test="${empty isDKPreConfigured && !empty catalogEntryView}">
+	<%-- determine if the kit is pre-configured or not --%>
+	<c:set var="isDKPreConfigured" value="${catalogEntryView.dynamicKitDefaultConfigurationComplete}"/>
+	
+	<c:if test="${isDKPreConfigured == '1'}">
+		<c:set var="isDKPreConfigured" value="true"/>				
+	</c:if>
+</c:if>
+
+<c:if test="${empty catEntryIdentifier && !empty catalogEntryView}">
+	<%-- set the unique ID for this catentry --%>
+	<c:set var="catEntryIdentifier" value="${catalogEntryView.uniqueID}"/>
+</c:if>
+
+<c:if test="${empty isDKConfigurable}">
+	<c:set var="isDKConfigurable" value="${true}"/>
+</c:if>
+
+<c:choose>
+	<c:when test="${!empty isDKPreConfigured && !empty catEntryIdentifier && showDynamicKit == 'true'}">
+
+		<%-- at least one preconfiguration. Only picking the first pre-configuration if there are multiple. --%>
+		<div style="visibility: <c:out value="${isDKPreConfigured ? 'visible' : 'hidden'}" />">
+			<flow:ifDisabled feature="AjaxAddToCart">
+				<%-- create a form to represent the dynamic kit --%>
+				<form name="OrderItemAddForm_<c:out value='${catEntryIdentifier}'/>" action="OrderChangeServiceAddOrderItemWithComponents" method="post" id="OrderItemAddForm_<c:out value='${catEntryIdentifier}'/>">
+					<input type="hidden" name="catEntryId_1" value="<c:out value="${catEntryIdentifier}"/>"/>
+					<input type="hidden" name="quantity_1" value="1"/>
+					<input type="hidden" name="storeId" value="<c:out value='${WCParam.storeId}'/>" id="OrderItemAddForm_storeId_<c:out value='${catEntryIdentifier}'/>"/>
+					<input type="hidden" name="catalogId" value="<c:out value='${WCParam.catalogId}'/>" id="OrderItemAddForm_catalogId_<c:out value='${catEntryIdentifier}'/>"/>
+					<input type="hidden" name="langId" value="<c:out value='${WCParam.langId}'/>" />			
+					<input type="hidden" name="orderId" value="." id="OrderItemAddForm_orderId_<c:out value='${catEntryIdentifier}'/>"/>
+					<input type="hidden" name="URL" value="AjaxOrderItemDisplayView?storeId=<c:out value='${WCParam.storeId}'/>&catalogId=<c:out value='${WCParam.catalogId}'/>&langId=<c:out value='${WCParam.langId}'/>" id="OrderItemAddForm_url_<c:out value='${catEntryIdentifier}'/>"/>
+					<input type="hidden" name="errorViewName" value="InvalidInputErrorView" id="OrderItemAddForm_errorViewName_<c:out value='${catEntryIdentifier}'/>"/>
+					<input type="hidden" name="calculationUsage" value="-1,-2,-3,-4,-5,-6,-7" id="OrderItemAddForm_calcUsage_${catEntryIdentifier}"/>
+					<input type="hidden" name="updateable" value="0" id="OrderItemAddForm_updateable_${catEntryIdentifier}"/>
+					<input type="hidden" name="listId" value="." id="OrderItemAddForm_wishlistId_${catEntryIdentifier}"/>
+					<flow:ifEnabled feature="SOAWishlist">
+						<input type="hidden" name="giftListId" value="<c:out value='${giftListId}'/>" id="<c:out value='OrderItemAddForm_${catEntryIdentifier}_giftListId_${giftListId}'/>"/>
+					</flow:ifEnabled>			
+				</form>		
+				<c:set var="buttonAttributes">id="DK_action_${catEntryIdentifier}"</c:set>
+				<c:set var="buttonLink"><%-- link to add to cart --%>
+					javascript: processAndSubmitForm(dojo.byId('OrderItemAddForm_<c:out value='${catEntryIdentifier}'/>'));
+				</c:set>	
+						
+			</flow:ifDisabled>
+			
+			<flow:ifEnabled feature="AjaxAddToCart">
+				<c:set var="extraStyle" value="ajaxAddToCart wishlist_detailed_link"/>
+				<c:set var="buttonAttributes">id="addDK<c:out value='${catEntryIdentifier}'/>PreconfigurationToCartLink"</c:set>
+				<c:set var="buttonLink"><%-- link to add to cart --%>
+					javascript: setCurrentId('addDK<c:out value='${catEntryIdentifier}'/>PreconfigurationToCartLink'); 
+					categoryDisplayJS.AddItem2ShopCartAjax('<c:out value='${catEntryIdentifier}'/>',1, {catalogEntryType: 'dynamicKit'})				
+				</c:set>		
+			</flow:ifEnabled>	
+			
+			<c:set var="buttonStyle" value="primary"/>
+			<%-- the pageView variable is set in one of thse JSPs
+					CatalogEntryThumbnailDisplay.jsp
+					CatalogEntryDBThumbnailDisplay.jspf
+					CtalogEntrySearchThumbnailDisplay.jsp
+			--%>
+			<c:if test="${pageView == 'sidebar'}">	<c:set var="buttonStyle" value="linkOnly"/> </c:if>
+							
+			<fmt:message bundle="${storeText}" key="ADD_TO_CART" var="buttonMessage"/>
+			<%@ include file="../../Snippets/ReusableObjects/StoreButton.jspf" %>
+			<div class="clear_both top_margin2px"></div>
+		</div>	
+		
+		<%-- show configure button --%>
+		<c:set var="buttonStyle" value="primary"/>
+		<c:set var="extraStyle" value="ajaxAddToCart wishlist_detailed_link"/>
+		
+		<c:if test="${pageView == 'sidebar'}">	<c:set var="buttonStyle" value="linkOnly"/> </c:if>
+		
+		<div style="visibility: <c:out value="${isDKConfigurable ? 'visible' : 'hidden'}" />">
+			<c:set var="buttonLink">
+				javascript:categoryDisplayJS.ConfigureDynamicKit('<c:out value='${catEntryIdentifier}'/>',1);
+			</c:set>
+			<fmt:message bundle="${storeText}" key="CONFIGURE" var="buttonMessage"/>
+			<%@ include file="../../Snippets/ReusableObjects/StoreButton.jspf" %>
+		</div>
+	</c:when>
+</c:choose>		
+<c:remove var="isDKPreConfigured"/>		
+<c:remove var="isDKConfigurable"/>

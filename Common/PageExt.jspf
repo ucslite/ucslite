@@ -1,0 +1,31 @@
+<%--
+ =================================================================
+  Licensed Materials - Property of IBM
+
+  WebSphere Commerce
+
+  (C) Copyright IBM Corp. 2011, 2014 All Rights Reserved.
+
+  US Government Users Restricted Rights - Use, duplication or
+  disclosure restricted by GSA ADP Schedule Contract with
+  IBM Corp.
+ =================================================================
+--%>
+
+<%-- Include this extension jspf at the end of page. Once the page is loaded, it sets requestSubmitted flag to false, so that
+shoppers can start submitting new request --%>
+
+<script type="text/javascript">
+	dojo.addOnLoad(function() { 
+		//Make sure page is loaded at this point
+		//Set requestedSubmitted to false
+		resetRequest();
+
+		// All div's whose id attribute contains dojoWidget subString -- dojo.query('div[id*="dojoWidget"]')
+		// All div's which contains dojoType attribute -- dojo.query(div[dojoType])
+		dojo.query('div[dojoType]').forEach(function(node, index, arr){
+			addToWidgetsList(node.id);
+		});
+		parseAllWidgets();
+	}); 	
+</script>

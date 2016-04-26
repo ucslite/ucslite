@@ -1,0 +1,33 @@
+<%--
+ =================================================================
+  Licensed Materials - Property of IBM
+
+  WebSphere Commerce
+
+  (C) Copyright IBM Corp. 2009, 2012 All Rights Reserved.
+
+  US Government Users Restricted Rights - Use, duplication or
+  disclosure restricted by GSA ADP Schedule Contract with
+  IBM Corp.
+ =================================================================
+--%>
+
+<!-- BEGIN PromotionChoiceOfFreeGiftsPopup.jspf -->
+<script type="text/javascript">
+	dojo.addOnLoad(function() { parseWidget("free_gifts_popup"); parseWidget("PromotionFreeGiftsDisplay");});	
+</script>       
+
+<script type="text/javascript" src="<c:out value="${jsAssetsDir}javascript/CheckoutArea/PromotionChoiceOfFreeGifts.js"/>"></script>
+
+<div id="free_gifts_popup_main_div">
+	<div id="free_gifts_popup" dojoType="dijit.Dialog" style="display: none;" title="<fmt:message bundle="${storeText}" key="DIALOG_TITLE_MESSAGE"/>">
+		<!-- Refresh area -->
+			<span id="PromotionFreeGiftsDisplay_ACCE_Label" class="spanacce"><fmt:message bundle="${storeText}" key="ACCE_Region_Free_Gift"/></span>
+			<div dojoType="wc.widget.RefreshArea" id="PromotionFreeGiftsDisplay" controllerId="PromotionFreeGifts_Controller">
+			<%out.flush();%>
+			<c:import url="/${sdb.jspStoreDir}/Snippets/Marketing/Promotions/PromotionChoiceOfFreeGiftsPopupContent.jsp"/>			
+			<%out.flush();%>
+		</div>		
+	</div>  
+</div>
+<!-- END PromotionChoiceOfFreeGiftsPopup.jspf -->

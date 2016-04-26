@@ -1,0 +1,804 @@
+<%--
+ =================================================================
+  Licensed Materials - Property of IBM
+
+  WebSphere Commerce
+
+  (C) Copyright IBM Corp. 2008, 2015 All Rights Reserved.
+
+  US Government Users Restricted Rights - Use, duplication or
+  disclosure restricted by GSA ADP Schedule Contract with
+  IBM Corp.
+ =================================================================
+--%>
+
+<%--
+*****
+This object snippet displays a catalog entry on the different places across the site.
+Depending on your input parameters different information is shown.
+Users may specify display parameters to limit what is shown (see optional parameters) and much more.
+
+Parameters required:
+	catEntry:	This is the catalog entry that will be displayed. It should be a variable representing a "com.ibm.commerce.catalog.facade.datatypes.CatalogNavigationViewType.catalogEntryView".
+
+Optional display parameters:
+	pageView: Shows the catalog entry information in some pattern. It mainly defines how the catalog entry is shown. 
+		Possible values are 'image','detailed', 'sidebar', 'imageForCompare' and 'imageOnly'. Defaults to 'imageOnly'.
+	useClickInfoURL: If set to true, will use the variable 'ClickInfoURL' for the thumbnail image and name link.
+	ClickInfoURL: If 'useClickInfoURL' is set to true, this will be used as the link for the image and name links.
+	catEntryIdentifier:	Is a unique identifier to differentiate the current catalog entry with respect to other ones that may be displayed on the same page.
+	includeRemoveFromWishList: Is set to true if we need Remove link in Wish List pages. The value is 'true' in wishList page and sharedWishList Page and 'false' in myAccountCentralLinkDisplay. 
+	
+*****
+--%>
+<!-- BEGIN CatalogEntrySearchThumbnailDisplay.jspf-->
+
+
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
+
+<%@page import="java.util.List"%>
+
+<c:set var="search" value='"'/>
+<c:set var="replaceStr" value="'"/>
+<c:set var="search01" value="'"/>
+<c:set var="replaceStr01" value="\\'"/>
+<c:set var="replaceCmprStr" value=""/>
+
+<c:set var="miniShopCartEnabled" value="false"/>
+<flow:ifEnabled feature="miniShopCart">
+	<c:set var="miniShopCartEnabled" value="true"/>
+</flow:ifEnabled>
+
+<%--
+  ***
+  * Host name of the URL that is used to point to the shared image directory.  Use this variable to reference images.
+  ***
+--%>
+<c:set var="catEntryIDToUse" value="${catEntry.uniqueID}"/>
+
+<%-- Set catEntry to catalogEntryView before including CatalogEntryThumbnailDisplayForDynamicKits.jspf --%>
+<c:set var="catalogEntryView" value="${catEntry}"/>
+<c:set var="isDKConfigurable" value="${!empty catalogEntryView.dynamicKitModelReference}"/>
+
+<%-- Get the thumbnail from meta data.  This version will not have a default context path --%>
+<c:set var="productThumbNail" value="${catEntry.thumbnail}" />
+<c:choose>
+	<c:when test="${(fn:startsWith(productThumbNail, 'http://') || fn:startsWith(productThumbNail, 'https://'))}">
+		<wcst:resolveContentURL var="productThumbNail" url="${productThumbNail}"/>
+	</c:when>
+	<c:otherwise>
+		<c:set var="productThumbNail" value="${productThumbNail}" />
+	</c:otherwise>
+</c:choose>
+<c:set var="productFullImage" value="${catEntry.fullImage}"  />
+<c:choose>
+	<c:when test="${(fn:startsWith(productFullImage, 'http://') || fn:startsWith(productFullImage, 'https://'))}">
+		<wcst:resolveContentURL var="productFullImage" url="${productFullImage}"/>
+	</c:when>
+	<c:otherwise>
+		<c:set var="productFullImage" value="${productFullImage}" />
+	</c:otherwise>
+</c:choose>
+
+<c:set var="productName" value="${catEntry.name}"  />
+<c:set var="productShortDescription" value="${catEntry.shortDescription}"  />
+<c:set var="storeent_id" value="${catEntry.storeID}"  />
+
+<c:set var="highlightedName" value="${catEntry.metaData.name}" />
+<c:if test="${empty highlightedName}">
+	<c:set var="highlightedName" value="${productName}" />
+</c:if>
+
+<c:set var="highlightedShortDescription" value="${catEntry.metaData.shortDescription}" />
+<c:if test="${empty highlightedShortDescription}">
+	<c:set var="highlightedShortDescription" value="${productShortDescription}" />
+</c:if>
+
+<c:forEach var="price" items="${catEntry.price}" >
+	<c:choose>
+		<c:when test="${price.description == 'I'}">
+			<c:set var="indexedPrice" value="${price}" />
+		</c:when>
+		<c:when test="${price.description == 'L'}">
+			<c:set var="listPrice" value="${price}" />
+		</c:when>
+		<c:when test="${price.description == 'O'}">
+			<c:set var="calculatedPrice" value="${price}" />
+		</c:when>
+	</c:choose>
+</c:forEach>
+
+<c:if test="${not empty indexedPrice}" >
+	<c:if test="${not empty listPrice && listPrice.value gt indexedPrice.value}" >
+		<c:set var="strikedPriceString" value="${listPrice.value}"/>
+	</c:if>
+	<c:set var="priceString" value="${indexedPrice.value}"/>
+</c:if>
+<c:if test="${not empty calculatedPrice}" >
+	<c:remove var="strikedPriceString"/>
+	<c:set var="minimumPriceString" value="${calculatedPrice.minimumValue.value}"  />
+	<c:set var="maximumPriceString" value="${calculatedPrice.maximumValue.value}"  />
+	<c:choose>
+		<c:when test="${not empty minimumPriceString && not empty maximumPriceString}">
+			<c:set var="priceString" value="${minimumPriceString} - ${maximumPriceString}"/>
+		</c:when>
+		<c:otherwise>
+			<c:if test="${not empty listPrice && listPrice.value gt calculatedPrice.value}" >
+				<c:set var="strikedPriceString" value="${listPrice.value}"/>
+			</c:if>
+			<c:set var="priceString" value="${calculatedPrice.value}"/>
+		</c:otherwise>
+	</c:choose>
+</c:if>
+
+<c:set var="singleSKU" value="false"/>
+<c:choose>
+	<c:when test="${catEntry.catalogEntryTypeCode == 'BundleBean'}">
+		<c:set var="type" value="bundle" />
+		<c:set var="singleSKU" value="${catEntry.hasSingleSKU}"/>
+	</c:when>
+	<c:when test="${catEntry.catalogEntryTypeCode == 'PackageBean'}">
+		<c:set var="type" value="package" />
+	</c:when>
+	<c:when test="${catEntry.catalogEntryTypeCode == 'ItemBean'}">
+		<c:set var="type" value="item" />
+	</c:when>
+	<c:when test="${catEntry.catalogEntryTypeCode == 'ProductBean'}">
+		<c:set var="type" value="product" />
+		<c:set var="singleSKU" value="${catEntry.hasSingleSKU}"/>
+	</c:when>
+	<c:when test="${catEntry.catalogEntryTypeCode == 'DynamicKitBean'}">
+		<c:set var="type" value="dynamicKit" />
+		<c:set var="singleSKU" value="false"/>
+	</c:when>
+	<c:when test="${catEntry.catalogEntryTypeCode == 'PredDynaKitBean'}">
+		<c:set var="type" value="predDynaKit" />
+		<c:set var="singleSKU" value="false"/>
+	</c:when>
+</c:choose>
+<c:set var="dragType" value="${type}" />
+
+
+<c:if test="${singleSKU == 'true'}">
+	<c:set var="catEntryIDToUse" value="${catEntry.singleSKUCatalogEntryID}"/>
+</c:if>
+
+<wcst:alias name="StoreHelper" var="priceMode">
+	<wcf:param name="parameter" value=""/>
+	<wcf:param name="parameter" value="${storeId}"/>
+</wcst:alias>
+
+<c:if test="${empty calculatedPriceFlag}">
+	<c:choose>
+		<c:when test="${priceMode == '0'}">
+			<c:set var="calculatedPriceFlag" value="true"/>
+		</c:when>
+		<c:when test="${priceMode == '1'}">
+			<c:set var="calculatedPriceFlag" value="false"/>
+		</c:when>
+		<c:when test="${priceMode == '2'}">
+			<c:set var="calculatedPriceFlag" value="true"/>
+		</c:when>
+	</c:choose>
+</c:if>
+
+
+<c:if test="${calculatedPriceFlag == 'true'}">
+	<c:set var="defaultDisplayPriceRuleName" value="List price rule"/>
+	<wcf:rest var="displayPriceResult" url="/store/{storeId}/display_price">
+		<wcf:var name="storeId" value="${WCParam.storeId}" />
+		<wcf:param name="q" value="byCatalogEntryIdsAndPriceRuleName"/>
+		<wcf:param name="catalogEntryId" value="${catEntryIDToUse}"/>
+		<wcf:param name="priceRuleName" value="${defaultDisplayPriceRuleName}"/>
+	</wcf:rest>
+	<c:set var="displayPriceType" value="${displayPriceResult.resultList[0]}"  />
+
+	<c:if test="${null!=displayPriceType}">
+		<c:forEach var="aUnitPrice" items="${displayPriceType.unitPrice}" begin="0" end="0">
+			<c:set var="priceString" value="${aUnitPrice.price.value}"/>
+		</c:forEach>
+	</c:if>
+
+	<c:choose>
+
+		<c:when test="${type eq 'product' && !empty catEntry.numberOfSKUs}">
+		<!--  Get all the price of the SKU and get the maximum and minimum price. -->
+		
+		<c:catch>
+		
+		<wcf:rest var="entitledPricesResult" url="/store/{storeId}/price">
+			<wcf:var name="storeId" value="${WCParam.storeId}" />
+			<wcf:param name="q" value="byCatalogEntryIds"/>
+			<c:forEach var="entitledItem" items="${entitledItems}">
+				<wcf:param name="catalogEntryId" value="${entitledItem.uniqueID}"/>
+			</c:forEach>
+			<wcf:param name="currency" value="${env_currencyCode}"/>
+			<wcf:param name="checkEntitlement" value="false"/>
+		</wcf:rest>
+		<c:set var="entitledPrices" value="${entitledPricesResult.EntitledPrice}"/>
+		<c:if test="${displayPriceRange eq 'true'}">
+			<wcf:rest var="rangePricesResult" url="/store/{storeId}/price">
+				<wcf:var name="storeId" value="${WCParam.storeId}" />
+				<wcf:param name="q" value="byCatalogEntryIds"/>
+				<wcf:param name="catalogEntryId" value="${catEntry.uniqueID}" />
+				<wcf:param name="currency" value="${env_currencyCode}"/>
+				<wcf:param name="checkEntitlement" value="false"/>
+				<wcf:param name="profileName" value="IBM_Store_EntitledPrice_RangePrice_All}"/>
+			</wcf:rest>
+			<c:set var="rangePrices" value="${rangePricesResult.EntitledPrice}"/>
+		</c:if>
+		</c:catch>
+		
+		<c:if test="${null!=entitledPrices}">
+			<c:forEach var="entitledPrice" items="${entitledPrices}" varStatus="idx">
+				<c:forEach var="unitPrice" items="${entitledPrice.UnitPrice}" >
+				   <c:if test="${idx.index == 0}">
+				   		<c:set var="maximumPrice" value="${unitPrice.price.value}" />
+				   		<c:set var="minimumPrice" value="${unitPrice.price.value}" />
+				   </c:if>
+				   <c:if test="${!empty unitPrice.price.value && unitPrice.price.value > maximumPrice}">
+				   		<c:set var="maximumPrice" value="${unitPrice.price.value}" />
+				   </c:if>
+				   <c:if test="${!empty unitPrice.price.value && unitPrice.price.value < minimumPrice}">
+				   		<c:set var="minimumPrice" value="${unitPrice.price.value}" />
+				   </c:if>
+				</c:forEach>
+			</c:forEach>
+		</c:if>
+		
+		<c:if test="${empty minimumPrice}">
+			<c:set var="minimumPriceString" value="${minimumPrice}" />
+		</c:if>
+		
+		<c:if test="${empty maximumPrice}">
+			<c:set var="maximumPriceString" value="${maximumPrice}" />
+		</c:if>
+		
+		<c:if test="${minimumPrice == maximumPrice && !empty minimumPrice && !empty maximumPrice}">
+			<c:set var="offerPrice" value="${minimumPrice}"/>
+		</c:if>
+		
+		<c:forEach var="eachRangePrice" items="${rangePrices}" varStatus="idx">
+					<c:if test="${!empty eachRangePrice.RangePrice}">
+						<c:set var="rangePrice" value="${eachRangePrice.RangePrice}"/>
+					</c:if>
+		</c:forEach>
+			
+		</c:when>
+		<c:when test="${type eq 'bundle'}">
+			<c:set var="components" value="${catEntry.components}"/>
+			<c:set var="bundlePrice" value="0"/>
+			<c:catch>
+			
+			<wcf:rest var="entitledPricesResult" url="/store/{storeId}/price">
+				<wcf:var name="storeId" value="${WCParam.storeId}" />
+				<wcf:param name="q" value="byCatalogEntryIds"/>
+				<c:forEach var="component" items="${components}">
+					<wcf:param name="catalogEntryId" value="${component.uniqueID}"/>
+				</c:forEach>
+				<wcf:param name="currency" value="${env_currencyCode}"/>
+				<wcf:param name="checkEntitlement" value="false"/>
+			</wcf:rest>
+			<c:set var="entitledPrices" value="${entitledPricesResult.EntitledPrice}"/>
+			</c:catch>
+			
+			<c:if test="${null!=entitledPrices}">
+				<c:forEach var="entitledPrice" items="${entitledPrices}" varStatus="idx">
+					<c:forEach var="unitPrice" items="${entitledPrice.UnitPrice}" >
+						<c:if test="${!empty entitledPrice.UnitPrice}">
+							<c:set var="bundlePrice" value="${bundlePrice + unitPrice.price.value}"/>
+						</c:if>
+					</c:forEach>
+				</c:forEach>
+			</c:if>
+
+			<c:if test="${!empty bundlePrice && bundlePrice gt 0}">
+				<c:set var="offerPrice" value="${bundlePrice}"/>
+			</c:if>
+		</c:when>
+		<%-- In grid mode, no child SKU will be retrieved, only display the offer price of the product. --%>
+		<c:when test="${type eq 'package' || type eq 'item' || (type eq 'product' && empty catEntry.numberOfSKUs)}">
+		<c:catch>
+			<c:choose>
+				<c:when test="${displayPriceRange eq 'true' }">
+					<wcf:rest var="entitledPricesResult" url="/store/{storeId}/price">
+						<wcf:var name="storeId" value="${WCParam.storeId}" />
+						<wcf:param name="q" value="byCatalogEntryIds"/>
+						<wcf:param name="catalogEntryId" value="${catEntry.uniqueID}" />
+						<wcf:param name="currency" value="${env_currencyCode}"/>
+						<wcf:param name="checkEntitlement" value="false"/>
+						<wcf:param name="profileName" value="IBM_Store_EntitledPrice_RangePrice_All}"/>
+					</wcf:rest>
+					<c:set var="entitledPrices" value="${entitledPricesResult.EntitledPrice}"/>					
+				</c:when>
+				<c:otherwise>
+					<wcf:rest var="entitledPricesResult" url="/store/{storeId}/price">
+						<wcf:var name="storeId" value="${WCParam.storeId}" />
+						<wcf:param name="q" value="byCatalogEntryIds"/>
+						<wcf:param name="catalogEntryId" value="${catEntry.uniqueID}"/>
+						<wcf:param name="currency" value="${env_currencyCode}"/>
+						<wcf:param name="checkEntitlement" value="false"/>
+					</wcf:rest>
+					<c:set var="entitledPrices" value="${entitledPricesResult.EntitledPrice}"/>
+				</c:otherwise>
+			</c:choose>
+		</c:catch>
+		
+			
+			<c:if test="${null!=entitledPrices}">
+				<c:forEach var="entitledPrice" items="${entitledPrices}" varStatus="idx">
+					<c:forEach var="unitPrice" items="${entitledPrice.UnitPrice}" >
+						<c:if test="${!empty entitledPrice.UnitPrice}">
+							<c:set var="offerPrice" value="${unitPrice.price.value}"/>
+						</c:if>
+					</c:forEach>
+				</c:forEach>
+			</c:if>
+			
+			<c:forEach var="entitledPrice" items="${entitledPrices}" varStatus="idx">
+					<c:if test="${!empty entitledPrice.RangePrice}">
+						<c:set var="rangePrice" value="${entitledPrice.RangePrice}"/>
+					</c:if>
+			</c:forEach>
+			
+			
+		</c:when>
+		
+		<c:when test="${catEntry.catalogEntryTypeCode eq 'DynamicKitBean'}">
+			<c:catch>
+				<wcf:rest var="entitledPricesResult" url="/store/{storeId}/price">
+					<wcf:var name="storeId" value="${WCParam.storeId}" />
+					<wcf:param name="q" value="byCatalogEntryIds"/>
+					<wcf:param name="catalogEntryId" value="${catEntry.uniqueID}"/>
+					<wcf:param name="currency" value="${env_currencyCode}"/>
+					<wcf:param name="checkEntitlement" value="false"/>
+					<wcf:param name="dynamicKitAsItem" value="false"/>
+				</wcf:rest>
+				<c:set var="entitledPrices" value="${entitledPricesResult.EntitledPrice}"/>
+			</c:catch>
+			
+			<c:if test="${null!=entitledPrices}">
+				<c:forEach var="entitledPrice" items="${entitledPrices}" varStatus="idx">
+					<c:forEach var="unitPrice" items="${entitledPrice.UnitPrice}" >
+						<c:if test="${!empty entitledPrice.UnitPrice}">
+							<c:set var="offerPrice" value="${unitPrice.price.value}"/>
+						</c:if>
+					</c:forEach>
+				</c:forEach>
+			</c:if>
+		</c:when>
+		
+	</c:choose>
+	
+	<c:choose>
+		<c:when test="${!empty minimumPriceString && !empty maximumPriceString && !(minimumPriceString eq maximumPriceString)}">
+				<c:set var="priceString" value="${minimumPriceString} - ${maximumPriceString}"/>
+		</c:when>
+		<c:otherwise>
+
+			<c:if test="${!empty listPrice && listPrice.value gt offerPrice}" >
+				<c:set var="strikedPriceString" value="${listPrice.value}"/>
+			</c:if>
+			<c:set var="priceString" value="${offerPrice}" />
+		</c:otherwise>
+	</c:choose>
+
+</c:if>
+
+<c:choose>
+	<c:when test="${empty priceString}">
+		<fmt:message bundle="${storeText}" var="priceString" key="NO_PRICE_AVAILABLE" />
+		<c:set var="emptyPriceString" value="true"/>
+		<c:set var="formattedPriceString" value="${priceString}"/>
+	</c:when>
+	<c:otherwise>
+		<c:set var="emptyPriceString" value="false"/>
+		<c:if test="${not empty strikedPriceString}">
+			<fmt:formatNumber var="formattedPriceString" value="${strikedPriceString}" type="currency" currencySymbol="${env_CurrencySymbolToFormat}" maxFractionDigits="${env_currencyDecimal}"/>
+		</c:if>
+
+		<c:if test="${not empty minimumPriceString && not empty maximumPriceString}">
+			<fmt:formatNumber var="formattedMinPrice" value="${minimumPriceString}" type="currency" currencySymbol="${env_CurrencySymbolToFormat}" maxFractionDigits="${env_currencyDecimal}"/> 
+			<fmt:formatNumber var="formattedMaxPrice" value="${maximumPriceString}" type="currency" currencySymbol="${env_CurrencySymbolToFormat}" maxFractionDigits="${env_currencyDecimal}"/>
+			<c:set var="formattedPriceString" value="${formattedMinPrice} - ${formattedMaxPrice}"/>
+		</c:if>
+
+		<c:if test="${not empty priceString && empty minimumPriceString && empty maximumPriceString}">
+			<fmt:formatNumber var="formattedPriceString" value="${priceString}" type="currency" currencySymbol="${env_CurrencySymbolToFormat}" maxFractionDigits="${env_currencyDecimal}"/>
+		</c:if>
+	</c:otherwise>
+</c:choose>
+
+<c:set var="buyable" value="${catEntry.buyable}"/>
+<c:set var="catalogEntry" value="${catEntry}" />
+<c:choose>
+	<%-- Use the context parameters if they are available; usually in a subcategory --%>
+	<c:when test="${empty WCParam.categoryId}">
+		<%-- categoryId is empty..just display product URL --%>
+		<c:set var="patternName" value="ProductURL"/>
+		<c:set var="parent_category_rn" value="${searchParentCategoryId}" />
+		<c:set var="top_category" value="${searchTopCategoryId}" />
+		<c:set var="categoryId" value="${WCParam.categoryId}" />
+	</c:when>
+	<c:when test="${searchParentCategoryId == WCParam.categoryId}">
+		<%-- CategoryId is present..but it is same as parent category Id --%>
+		<c:set var="parent_category_rn" value="${searchTopCategoryId}" />
+		<c:set var="top_category" value="${searchTopCategoryId}" />
+		<c:set var="categoryId" value="${WCParam.categoryId}" />
+		<c:set var="patternName" value="ProductURLWithCategory"/>
+		<c:if test="${!empty top_category}">
+			<c:set var="patternName" value="ProductURLWithParentCategory"/>
+		</c:if>
+	</c:when>
+	<c:when test="${!empty searchParentCategoryId && !empty searchTopCategoryId}">
+		<%-- both parent and top category are present.. display full product URL --%>
+		<c:set var="parent_category_rn" value="${searchParentCategoryId}" />
+		<c:set var="top_category" value="${searchTopCategoryId}" />
+		<c:set var="categoryId" value="${WCParam.categoryId}" />
+		<c:set var="patternName" value="ProductURLWithParentAndTopCategory"/>
+		<c:if test="${top_category == parent_category_rn}">
+			<%-- But both top and parent category are same..display only parent category in product URL --%>
+			<c:set var="patternName" value="ProductURLWithParentCategory"/>
+		</c:if>
+	</c:when>
+	<c:when test="${!empty searchParentCategoryId}">
+		<%-- parent category is not empty..use product URL with parent category --%>
+		<c:set var="parent_category_rn" value="${searchParentCategoryId}" />
+		<c:set var="top_category" value="${searchTopCategoryId}" />
+		<c:set var="categoryId" value="${WCParam.categoryId}" />
+		<c:set var="patternName" value="ProductURLWithParentCategory"/>
+	</c:when>
+	<%-- In a top category; use top category parameters --%>
+	<c:when test="${WCParam.top == 'Y'}">
+		<c:set var="parent_category_rn" value="${searchParentCategoryId}" />
+		<c:set var="top_category" value="${searchTopCategoryId}" />
+		<c:set var="categoryId" value="${WCParam.categoryId}" />
+		<c:set var="patternName" value="ProductURLWithCategory"/>
+	</c:when>
+	<%-- Store front main page; usually eSpots, parents unknown --%>
+	<c:otherwise>
+		<c:set var="parent_category_rn" value="${searchParentCategoryId}" />
+		<c:set var="top_category" value="${searchTopCategoryId}" />
+		<%-- Just display productURL without any category info --%>
+		<c:set var="patternName" value="ProductURL"/>
+	</c:otherwise>
+</c:choose>
+
+<wcf:url var="catEntryDisplayUrl" patternName="${patternName}" value="Product2">
+	<wcf:param name="catalogId" value="${WCParam.catalogId}"/>
+	<wcf:param name="storeId" value="${WCParam.storeId}"/>
+	<wcf:param name="productId" value="${catEntryIdentifier}"/>
+	<wcf:param name="langId" value="${langId}"/>
+	<wcf:param name="errorViewName" value="ProductDisplayErrorView"/>
+	<wcf:param name="categoryId" value="${WCParam.categoryId}" />
+	<wcf:param name="top_category" value="${top_category}" />
+	<wcf:param name="parent_category_rn" value="${parent_category_rn}" />
+	<wcf:param name="urlLangId" value="${urlLangId}" />
+</wcf:url>
+<c:if test="${! empty experimentId}">
+	<wcf:url var="catEntryDisplayUrl" value="ClickInfo">
+		<wcf:param name="storeId" value="${WCParam.storeId}"/>
+        <wcf:param name="evtype" value="CpgnClick" />
+        <wcf:param name="mpe_id" value="${mpe_id}" />
+        <wcf:param name="intv_id" value="${intv_id}" />
+        <wcf:param name="experimentId" value="${experimentId}" />
+		<wcf:param name="testElementId" value="${testElementId}" />
+        <wcf:param name="expDataType" value="CatalogEntryId" />
+        <wcf:param name="expDataUniqueID" value="${catEntryIdentifier}" />
+        <wcf:param name="URL" value="${catEntryDisplayUrl}" />
+	</wcf:url>
+</c:if>
+
+<c:choose>
+	<c:when test="${pageView == 'image'}">		
+		<div id="baseContent_<c:out value='${prefix}'/>_<c:out value='${catEntryIdentifier}'/>">
+			<div class="img" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_div_1">
+				<c:choose>
+					<c:when test="${!empty productThumbNail}">							
+						<a href="<c:out value="${catEntryDisplayUrl}" escapeXml="false"/>" id="catalogEntry_img<c:out value="${catEntryIdentifier}"/>" 
+							class="itemhover" title="<c:out value='${fn:replace(productName, search, replaceStr)} ${formattedPriceString}' escapeXml='false'/>" >														
+							<c:set var="imgSource" value="${productThumbNail}" />
+
+							<img src="<c:out value='${imgSource}'/>" 
+								alt="<c:out value='${fn:replace(productName, search, replaceStr)} ${formattedPriceString}' escapeXml='false'/>" 
+								/>
+										
+							<c:forEach var="attribute" items="${attributes}" varStatus="status2">
+								<c:if test="${attribute.usage == 'Descriptive' && fn:startsWith(attribute.attributeIdentifier.externalIdentifier.identifier,'adbug')}">
+									<c:remove var="adbugImage1"/>
+									<c:set var="adbugLocation" value="top_right"/>										
+									<c:forEach var="extVal" items="${attribute.extendedValue}">
+										<c:if test="${extVal.key == 'Image1'}">
+											<c:set var="adbugImage1" value="${storeImgDir}${extVal.value}"/>																								
+										</c:if>
+										<c:if test="${extVal.key == 'Field2'}">
+											<c:set var="adbugLocation" value="${extVal.value}"/>
+										</c:if>										
+									</c:forEach>
+									<c:if test="${!empty adbugImage1}">
+										<div style="background-image: url(<c:out value='${adbugImage1}'/>)" class="adbug_${adbugLocation}" id="adbug_${emsName}_${catEntryIdentifier}_${attribute.value.value}" title="${attribute.value.value}"></div>
+									</c:if>										
+								</c:if>
+							</c:forEach>										
+						</a>
+					</c:when>
+					<c:otherwise>
+						<a href="<c:out value="${catEntryDisplayUrl}" escapeXml="false"/>" id="catalogEntry_img<c:out value="${catEntryIdentifier}"/>" 
+							class="itemhover" title="<c:out value='${fn:replace(productName, search, replaceStr)} ${formattedPriceString}' escapeXml='false'/>" >
+							<img src="<c:out value='${jspStoreImgDir}' />images/NoImageIcon_sm.jpg" 
+								alt="<c:out value='${fn:replace(productName, search, replaceStr)} ${formattedPriceString}' escapeXml='false'/>" 
+								/>
+						</a>
+					</c:otherwise>
+				</c:choose>
+			</div>
+		</div>
+		<div class="description_fixedwidth hover_underline" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_div_9b">
+			<a id="WC_CatalogEntryDBThumbnailDisplayJSPF_${catEntryIdentifier}_link_9b" tabindex="-1" aria-hidden="true" 
+				 href="<c:out value="${catEntryDisplayUrl}" escapeXml="false"/>" >
+				<c:out value="${highlightedName}" escapeXml="false"/>
+			</a>
+		</div>
+		<div class="price" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_div_10">
+			<%@ include file="../Search/CatalogEntryPriceDisplay.jspf" %>
+		</div>
+		<div class="button" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_div_11">
+			<c:choose>
+				<c:when test="${wishListPage  || sharedWishList}">
+					<wcf:url var="interestItemDeleteURL" value="InterestItemDelete" type="Ajax">
+						<wcf:param name="catEntryId" value="${catEntryIdentifier}" />
+						<wcf:param name="storeId" value="${WCParam.storeId}" />
+						<wcf:param name="catalogId" value="${WCParam.catalogId}" />
+						<wcf:param name="langId" value="${langId}" />
+						<wcf:param name="listId" value="." />
+						<c:if test="${sharedWishList}">
+							<wcf:param name="URL" value="InterestItemDisplay" />
+							<wcf:param name="errorViewName" value="InterestItemDisplay"/>
+						</c:if>
+						<flow:ifEnabled feature="AjaxMyAccountPage">
+							<wcf:param name="URL" value="AjaxAccountWishListDisplayView" />
+							<wcf:param name="errorViewName" value="AjaxAccountWishListDisplayView"/>
+						</flow:ifEnabled>
+					</wcf:url>
+					
+					<wcf:url var="wishListDeleteURL" value="AjaxRestWishListRemoveItem" type="Ajax">
+						<wcf:param name="giftListItemId" value="${listItem.giftListItemID}"/>
+						<wcf:param name="storeId" value="${WCParam.storeId}"/>
+						<wcf:param name="catalogId" value="${WCParam.catalogId}"/>
+						<wcf:param name="langId" value="${langId}"/>
+						<wcf:param name="quantity" value="0" />
+						<wcf:param name="giftListId" value="${wishListIdentifier}"/>
+						<c:if test="${sharedWishList}">
+							<wcf:param name="URL" value="InterestItemDisplay"/>
+							<wcf:param name="errorViewName" value="InterestItemDisplay"/>
+						</c:if>
+						<flow:ifEnabled feature="AjaxMyAccountPage">
+							<wcf:param name="URL" value="AjaxAccountWishListDisplayView"/>
+							<wcf:param name="errorViewName" value="AjaxAccountWishListDisplayView"/>
+						</flow:ifEnabled>
+					</wcf:url>
+						
+					<div id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_add_div_1">
+						<flow:ifEnabled feature="AjaxAddToCart"> 
+							<c:choose>
+								<c:when test="${dragType == 'dynamicKit' || dragType == 'predDynaKit'}">																		
+									<%@ include file="../../ShoppingArea/Configurator/CatalogEntryThumbnailDisplayForDynamicKits.jspf" %>
+								</c:when>
+								<c:otherwise>	
+									<c:set var="buttonStyle" value="primary"/>
+									<c:set var="buttonAttributes">
+										id="WC_CatalogEntryDBThumbnailDisplayJSPF_${catEntryIdentifier}_links_1"
+									</c:set>
+									<c:set var="buttonLink">									
+										javascript: setCurrentId('<c:out value='WC_CatalogEntryDBThumbnailDisplayJSPF_${catEntryIdentifier}_links_1'/>'); categoryDisplayJS.AddItem2ShopCartAjax('<c:out value='${listItem.productId}'/>',1);
+									</c:set>	
+									<fmt:message bundle="${storeText}" key="ADD_TO_CART" var="buttonMessage"/>							
+									<%@ include file="StoreButton.jspf" %>	
+								</c:otherwise>
+							</c:choose>
+						</flow:ifEnabled>
+					</div>
+						
+					<c:if test="${!sharedWishList}">
+						<div id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_remove_div_1">
+							<c:if test="${includeRemoveFromWishList eq 'true'}">
+								<c:choose>
+									<c:when test="${sharedWishList}">
+										<a class="deleteLink hover_underline" href="<c:out value="${interestItemDeleteURL}"/>" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_links_3"><fmt:message bundle="${storeText}" key="WISHLIST_REMOVE" /></a>											
+									</c:when>
+									<c:otherwise>
+										<a class="deleteLink hover_underline" href="javaScript:MultipleWishLists.removeItem('<c:out value='${listItem.giftListItemID}'/>')" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_links_4"><span class="remove">&nbsp;</span><fmt:message bundle="${storeText}" key="WISHLIST_REMOVE" /></a>
+									</c:otherwise>
+								</c:choose>
+							</c:if>
+						</div>
+					</c:if>
+				</c:when>
+				<c:otherwise>
+					<c:choose>
+						<c:when test="${buyable}" >
+							<flow:ifDisabled feature="HidePurchaseButton"> 
+								<flow:ifEnabled feature="AjaxAddToCart"> 
+									<div id="add2CartPopupButton_<c:out value='${catEntryIdentifier}'/>">
+										<c:choose>											
+											<c:when test="${dragType == 'dynamicKit' || dragType == 'predDynaKit'}">
+												<%@ include file="../../ShoppingArea/Configurator/CatalogEntryThumbnailDisplayForDynamicKits.jspf" %>
+											</c:when>
+											<c:when test="${dragType == 'item' || dragType == 'package' || (singleSKU == true && dragType == 'product')}">
+											
+												<c:set var="buttonStyle" value="primary"/>
+												<c:set var="buttonAttributes">
+													id="WC_CatalogEntryDBThumbnailDisplayJSPF_${catEntryIdentifier}_links_11"
+												</c:set>
+												<c:set var="buttonLink">
+														javascript: setCurrentId('WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_links_11'); categoryDisplayJS.AddItem2ShopCartAjax('<c:out value='${catEntryIDToUse}'/>',1);										
+												</c:set>
+												<fmt:message bundle="${storeText}" key="ADD_TO_CART" var="buttonMessage"/>
+												<%@ include file="StoreButton.jspf" %>
+											</c:when>
+											<c:otherwise>
+												<c:set var="buttonStyle" value="primary"/>
+												<c:set var="buttonAttributes">
+													id="WC_CatalogEntryDBThumbnailDisplayJSPF_${catEntryIdentifier}_links_11" onkeypress="javascript: showPopup('<c:out value='${catEntryIDToUse}'/>', event, null, 'add2CartPopupButton_<c:out value='${catEntryIdentifier}'/>')"
+												</c:set>
+												<c:set var="buttonLink">
+														javascript: showPopup('<c:out value='${catEntryIDToUse}'/>', event, null, 'add2CartPopupButton_<c:out value='${catEntryIdentifier}'/>');										
+												</c:set>
+												<fmt:message bundle="${storeText}" key="ADD_TO_CART" var="buttonMessage"/>
+												<%@ include file="StoreButton.jspf" %>	
+											</c:otherwise>
+										</c:choose>
+									</div>
+								</flow:ifEnabled>
+							</flow:ifDisabled> 
+						</c:when>
+						<c:otherwise>
+							<fmt:message bundle="${storeText}" key="SKU_NOT_BUYABLE" />
+						</c:otherwise>
+					</c:choose>
+				</c:otherwise>
+			</c:choose>
+		</div>
+	</c:when>
+	<c:when test="${pageView == 'detailed'}">
+		<td class="image" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_td_4">
+			<div id="<c:out value='baseContent_${prefix}_${catEntryIdentifier}'/>">
+				<c:choose>
+					<c:when test="${!empty productThumbNail}">
+						<a href="<c:out value="${catEntryDisplayUrl}" escapeXml="false"/>" id="catalogEntry_img<c:out value="${catEntryIdentifier}"/>" 
+							class="itemhoverdetailed" title="<c:out value='${fn:replace(productName, search, replaceStr)} ${formattedPriceString}' escapeXml='false'/>" >
+							<img src="<c:out value='${productThumbNail}'/>" 
+								alt="<c:out value='${fn:replace(productName, search, replaceStr)} ${formattedPriceString}' escapeXml='false'/>" 
+								/>
+							<c:forEach var="attribute" items="${attributes}" varStatus="status2">
+								<c:if test="${attribute.usage == 'Descriptive' && fn:startsWith(attribute.attributeIdentifier.externalIdentifier.identifier,'adbug')}">
+									<c:remove var="adbugImage1"/>
+									<c:set var="adbugLocation" value="top_right"/>										
+									<c:forEach var="extVal" items="${attribute.extendedValue}">
+										<c:if test="${extVal.key == 'Image1'}">
+											<c:set var="adbugImage1" value="${storeImgDir}${extVal.value}"/>																								
+										</c:if>
+										<c:if test="${extVal.key == 'Field2'}">
+											<c:set var="adbugLocation" value="${extVal.value}"/>
+										</c:if>										
+									</c:forEach>
+									<c:if test="${!empty adbugImage1}">
+										<div style="background-image: url(<c:out value='${adbugImage1}'/>)" class="adbug_detailed_${adbugLocation}" id="adbug_${emsName}_${catEntryIdentifier}_${attribute.value.value}" title="${attribute.value.value}"></div>
+									</c:if>										
+								</c:if>
+							</c:forEach>
+						</a>
+					</c:when>
+					<c:otherwise>
+						<a href="<c:out value="${catEntryDisplayUrl}" escapeXml="false"/>" id="catalogEntry_img<c:out value="${catEntryIdentifier}"/>" 
+							class="itemhoverdetailed" title="<c:out value='${fn:replace(productName, search, replaceStr)} ${formattedPriceString}' escapeXml='false'/>">
+							<img src="<c:out value='${jspStoreImgDir}' />images/NoImageIcon_sm.jpg" 
+								alt="<c:out value='${fn:replace(productName, search, replaceStr)} ${formattedPriceString}' escapeXml='false'/>" 
+								/>
+						</a>
+					</c:otherwise>
+				</c:choose>
+			</div>
+		</td>
+		<td>
+			<table>
+				<tr>
+					<td class="information" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_td_5">
+						<h3><a class="hover_underline" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_detailed_link" href="<c:out value="${catEntryDisplayUrl}" escapeXml="false"/>"><c:out value="${highlightedName}" escapeXml="false"/></a></h3>
+						<p><c:out value="${highlightedShortDescription}" escapeXml="false"/></p>
+					</td>
+					<td class="price" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_td_6">
+						<p>
+							<%@ include file="../Search/CatalogEntryPriceDisplay.jspf" %>
+						</p>
+					</td>
+					<td class="add_to_cart" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_td_7">
+						<c:choose>
+							<c:when test="${buyable}" >
+								<flow:ifDisabled feature="HidePurchaseButton"> 
+									<flow:ifEnabled feature="AjaxAddToCart"> 
+										<c:choose>
+											<c:when test="${dragType == 'dynamicKit' || dragType == 'predDynaKit'}">											
+												<%@ include file="../../ShoppingArea/Configurator/CatalogEntryThumbnailDisplayForDynamicKits.jspf" %>
+											</c:when>								
+											<c:when test="${dragType == 'item' || dragType == 'package' || (singleSKU == true && dragType == 'product')}">											
+												<c:set var="buttonStyle" value="primary"/>
+												<c:set var="buttonAttributes">
+													id="WC_CatalogEntryDBThumbnailDisplayJSPF_${catEntryIdentifier}_links_11"
+												</c:set>
+												<c:set var="buttonLink">
+													javascript: setCurrentId('WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_links_11'); categoryDisplayJS.AddItem2ShopCartAjax('<c:out value='${catEntryIDToUse}'/>',1);
+												</c:set>
+												<fmt:message bundle="${storeText}" key="ADD_TO_CART" var="buttonMessage"/>
+												<%@ include file="StoreButton.jspf" %>
+											</c:when>
+											<c:otherwise>											
+												<c:set var="buttonStyle" value="primary"/>
+												<c:set var="buttonAttributes">
+													id="WC_CatalogEntryDBThumbnailDisplayJSPF_${catEntryIdentifier}_links_11"
+												</c:set>
+												<c:set var="buttonLink">
+													javascript: showPopup('<c:out value='${catEntryIdentifier}'/>', event)"
+												</c:set>
+												<fmt:message bundle="${storeText}" key="ADD_TO_CART" var="buttonMessage"/>
+												<%@ include file="StoreButton.jspf" %>
+											</c:otherwise>
+										</c:choose>
+									</flow:ifEnabled>
+								</flow:ifDisabled> 
+								<c:if test="${includeRemoveFromWishList}">
+								    <br>
+									<c:choose>
+										<c:when test="${sharedWishList}">
+											<a class="deleteLink hover_underline" href="<c:out value="${interestItemDeleteURL}"/>" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_links_14" waistate:controls="MiniShoppingCart"><span class="remove">&nbsp;</span><fmt:message bundle="${storeText}" key="WISHLIST_REMOVE" /></a>
+										</c:when>
+										<c:otherwise>
+											<a class="deleteLink hover_underline" href="javaScript:MultipleWishLists.removeItem('<c:out value='${listItem.giftListItemID}'/>')" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${catEntryIdentifier}'/>_links_14"><span class="remove">&nbsp;</span><fmt:message bundle="${storeText}" key="WISHLIST_REMOVE" /></a>
+										</c:otherwise>
+									</c:choose>
+								</c:if>
+							</c:when>
+							<c:otherwise>
+								<fmt:message bundle="${storeText}" key="SKU_NOT_BUYABLE" />
+							</c:otherwise>
+						</c:choose>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<c:forEach var="attachment" items="${catEntry.attachments}" varStatus="att_status">
+							<c:set var="attachmentName" value="${attachment.metaData['name']}" />
+							<c:set var="attachmentPath" value="${attachment.attachmentAssetPath}" />
+							<c:set var="attachmentID" value="${attachment.attachmentAssetID}" />
+							<c:set var="attachmentImage" value="${attachment.metaData['image']}" />
+							<c:if test="${!empty attachmentImage}">
+								<a  href="${staticAssetContextRoot}/${attachmentPath}" id="WC_CatalogEntryDBThumbnailDisplayJSPF_<c:out value='${attachmentID}'/>_attachment_links_11"
+									class="h_tnav_but" title="<c:out value='${attachmentName}'/>" >
+									<img src="${jspStoreImgDir}${attachmentImage}" alt="<c:out value='${attachmentName}' />" align="left"/>
+									<c:out value="${attachmentName}" escapeXml="false"/>
+								</a><br/><br/>
+							</c:if>
+						</c:forEach>
+						<c:if test="${not empty catEntry.metaData.score}">
+							<p class="searchScore">
+								<fmt:message bundle="${storeText}" key="SEARCH_SCORE" />
+								<fmt:formatNumber type="number" maxFractionDigits="15" groupingUsed="true" value="${catEntry.metaData.score}" />
+							</p>
+						</c:if>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</c:when>
+</c:choose>
+
+<c:remove var="emptyPriceString"/>
+<c:remove var="priceString"/>
+<c:remove var="indexedPrice"/>
+<c:remove var="listPrice"/>
+<c:remove var="calculatedPrice"/>
+<c:remove var="strikedPriceString"/>
+<c:remove var="minimumPriceString"/>
+<c:remove var="maximumPriceString"/>
+
+<!-- END CatalogEntrySearchThumbnailDisplay.jspf-->

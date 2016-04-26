@@ -1,0 +1,233 @@
+<%--
+ =================================================================
+  Licensed Materials - Property of IBM
+
+  WebSphere Commerce
+
+  (C) Copyright IBM Corp. 2009, 2015 All Rights Reserved.
+
+  US Government Users Restricted Rights - Use, duplication or
+  disclosure restricted by GSA ADP Schedule Contract with
+  IBM Corp.
+ =================================================================
+--%>
+<!-- BEGIN CommonJSToInclude.jspf -->
+
+<!-- Style sheet for RWD -->
+<link rel="stylesheet" href="${jspStoreImgDir}${env_vfileStylesheetrwd}" type="text/css" />
+<!-- Style sheet for CI -->
+<link rel="stylesheet" href="${jspStoreImgDir}css/ci.css" type="text/css" />
+<!--[if IE 8]>
+<link rel="stylesheet" href="${jspStoreImgDir}css/stylesIE8.css" type="text/css" />
+<![endif]-->
+
+<%-- Include the Worklight hybrid JS --%>
+<c:if test = "${_worklightHybridApp eq 'true'}">
+    <%@ include file="../WorklightHybrid/WorklightJSToInclude.jspf" %>
+</c:if>
+
+<script type="text/javascript" charset="UTF-8" src="<c:out value="${dojoFile}"/>" djConfig="${dojoConfigParams}"></script>
+<script type="text/javascript" charset="UTF-8" src="<c:out value="${dojoFileDesktop}"/>" djConfig="${dojoConfigParams}"></script>
+
+<%-- Commented out to allow rescaling on tablets when the coshopping feature is not enabled; may need to re-enable this if coshopping is used in this store --%>
+<%-- prevent scaling when store is viewed in mobile devices --%>
+<%-- <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0;" /> --%>
+
+<meta name="CommerceSearch" content="storeId_${storeId}" />
+<meta name="viewport" content="<c:out value="${viewport}"/>">
+
+<%-- Place favicon for the store --%>
+<link rel="shortcut icon" href="${jspStoreImgDir}images/icon-favicon.ico" mce_href="${jspStoreImgDir}images/icon-favicon.ico"/>
+
+<%-- Place favicons for mobile devices --%>
+<link rel="apple-touch-icon-precomposed" href="${jspStoreImgDir}images/touch-icon-60px.png" sizes="60x60"/>
+<link rel="apple-touch-icon-precomposed" href="${jspStoreImgDir}images/touch-icon-72px.png" sizes="72x72"/>
+<link rel="apple-touch-icon-precomposed" href="${jspStoreImgDir}images/touch-icon-76px.png" sizes="76x76"/>
+<link rel="apple-touch-icon-precomposed" href="${jspStoreImgDir}images/touch-icon-114px.png" sizes="114x114"/>
+<link rel="apple-touch-icon-precomposed" href="${jspStoreImgDir}images/touch-icon-120px.png" sizes="120x120"/>
+<link rel="apple-touch-icon-precomposed" href="${jspStoreImgDir}images/touch-icon-144px.png" sizes="144x144"/>
+<link rel="apple-touch-icon-precomposed" href="${jspStoreImgDir}images/touch-icon-152px.png" sizes="152x152"/>
+
+<script type="text/javascript">
+	// Convert the WCParam object which contains request properties into javascript object
+	var WCParamJS = {
+		"storeId":'<c:out value = "${WCParam.storeId}"/>',
+		"catalogId":'<c:out value = "${WCParam.catalogId}"/>',
+		"langId":'<c:out value = "${WCParam.langId}"/>',
+		"pageView":'<c:out value = "${WCParam.pageView}"/>',
+		"orderBy":'<c:out value = "${WCParam.orderBy}"/>',
+		"orderByContent":'<c:out value = "${WCParam.orderByContent}"/>',
+		"searchTerm":'<wcf:out value = "${WCParam.searchTerm}" escapeFormat="js"/>',
+		"homePageURL" : '${env_TopCategoriesDisplayURL}',
+		"commandContextCurrency": "${CommandContext.currency}"
+	};
+	var absoluteURL = "<c:out value="${env_absoluteUrl}"/>";
+	var imageDirectoryPath = "<c:out value="${jspStoreImgDir}"/>";
+	var styleDirectoryPath = "<c:out value="${env_vfileColor}"/>";
+	var supportPaymentTypePromotions = <c:out value="${supportPaymentTypePromotions}"/>;
+	
+	var subsFulfillmentFrequencyAttrName = "<c:out value="${env_subsFulfillmentFrequencyAttrName}"/>";
+	var subsPaymentFrequencyAttrName = "<c:out value="${env_subsPaymentFrequencyAttrName}"/>";
+	var subsTimePeriodAttrName = "<c:out value="${env_subsTimePeriodAttrName}"/>";
+	
+	var storeNLS = null;
+	var storeUserType = "${userType}";
+	var ios = <c:out value="${ios}"/>;
+	var android = <c:out value="${android}"/>;
+	var multiSessionEnabled = <c:out value='${multiSessionEnabled}'/>;
+	
+	// Store the amount of time of inactivity before a re-login is required, this value is retrieved from wc-server.xml, default is 30 mins
+	var inactivityTimeout = <c:out value="${loginTimeoutValue}"/>;
+	
+	// Store the amount of time the inactivity warning dialog will be displayed before it closes itself, default is 20 seconds
+	var inactivityWarningDialogDisplayTimer = <c:out value="${requestScope.inactivityWarningDialogDisplayTimer}"/>;
+	
+	// Store the amount of time to display a inactivity warning dialog before a re-login is required, default is 30 seconds
+	var inactivityWarningDialogBuffer = <c:out value="${requestScope.inactivityWarningDialogBuffer}"/>;
+	
+	// Store the timing event to display the inactivity dialog
+	var inactivityTimeoutTracker = null;
+
+	// Store the timing event to close the inactivity dialog
+	var dialogTimeoutTracker = null;
+	
+	//browse only mode for Web Call Centre integration
+	var browseOnly = ${env_browseOnly};
+	
+	//Summary: Returns the absolute URL to use for prefixing any Ajax URL call.
+	//Description: Dojo does not handle the case where the parameters in the URL are delimeted by the "/" forward slash. Therefore, in order to
+	//             workaround the issue, all AJAX requests must be done using absolute URLs rather than relative.
+	//Returns: The absolute URL to use for prefixing any Ajax URL call.
+	function getAbsoluteURL() {
+		if (absoluteURL != "") {
+			var currentURL = document.URL;
+			var currentProtocol = "";
+		
+			if (currentURL.indexOf("://") != -1) {
+				currentProtocol = currentURL.substring(0, currentURL.indexOf("://"));
+			}
+			
+			var savedProtocol = "";
+			if (absoluteURL.indexOf("://") != -1) {
+				savedProtocol = absoluteURL.substring(0, absoluteURL.indexOf("://"));
+			}
+			
+			if (currentProtocol != savedProtocol) {
+				absoluteURL = currentProtocol + absoluteURL.substring(absoluteURL.indexOf("://"));
+			}
+		}
+		
+		return absoluteURL;
+	}
+	//Summary: Returns the path pointing to the shared image directory.
+	//Description: In order to get the image directory path in any javascript file, this function can be used.
+	//Returns: The path to reference images.
+	function getImageDirectoryPath() {
+		return imageDirectoryPath;
+	}
+	//Summary: Returns the path pointing to the directory containing color-dependant image files.
+	//Description: In order to get the directory containing color-dependant image files in any javascript file, this function can be used.
+	//Returns: The path to reference color-dependant image files.
+	function getStyleDirectoryPath() {
+		return styleDirectoryPath;
+	}
+
+	<c:if test="${env_onBehalfOf eq 'true'}">
+		var wcCommonRequestParameters = { "forUserId" : "<c:out value="${CommandContext.forUserId}"/>"};
+	</c:if>
+</script>
+
+<script type="text/javascript" src="${jsAssetsDir}javascript/MessageHelper.js"></script>
+<script type="text/javascript" src="${jsAssetsDir}javascript/StoreCommonUtilities.js"></script>
+<script type="text/javascript" src="${jsAssetsDir}javascript/Responsive.js"></script>
+<script type="text/javascript" src="${jsAssetsDir}javascript/Widgets/Search.js"></script>
+<script type="text/javascript" src="${jsAssetsDir}javascript/Widgets/MiniShopCartDisplay/MiniShopCartDisplay.js"></script>
+<script type="text/javascript" src="${jsAssetsDir}javascript/Widgets/Department/Department.js"></script>
+<script type="text/javascript" src="${jsAssetsDir}javascript/Common/ShoppingActions.js"></script>
+<script type="text/javascript" src="${jsAssetsDir}javascript/Common/ShoppingActionsServicesDeclaration.js"></script>
+<script type="text/javascript" src="${staticAssetContextRoot}${env_siteWidgetsDir}Common/javascript/WidgetCommon.js"></script>
+<script type="text/javascript" src="${staticAssetContextRoot}${env_siteWidgetsDir}Common/javascript/OnBehalfUtilities.js"></script>
+<script type="text/javascript" src="${staticAssetContextRoot}${env_siteWidgetsDir}com.ibm.commerce.store.widgets.csr.RegisteredCustomers/javascript/RegisteredCustomers.js"></script>
+
+
+<script>
+	dojo.require("wc.service.common");
+	dojo.require("dojo.number");
+	dojo.require("dojo.has");
+</script>
+
+<%-- The page will be reloaded with the selected catalogId --%>
+<wcf:url var="unsupportedBrowserErrorUrl" value="UnsupportedBrowserErrorView">
+	<wcf:param name="catalogId" value="${sdb.masterCatalog.catalogId}"/>
+	<wcf:param name="storeId" value="${WCParam.storeId}"/>
+	<wcf:param name="langId" value="${CommandContext.languageId}"/>
+</wcf:url>
+
+<script type="text/javascript">
+ //Set the default NLS to use in the store.
+ if(storeNLS == null) {
+	 dojo.requireLocalization("storetext", "StoreText");
+	 storeNLS = dojo.i18n.getLocalization("storetext","StoreText");
+ }
+ initializeInactivityWarning();
+ var ie6 = false;
+ var ie7 = false;
+ if (navigator != null && navigator.userAgent != null) {
+	 ie6 = (navigator.userAgent.toLowerCase().indexOf("msie 6.0") > -1);
+	 ie7 = (navigator.userAgent.toLowerCase().indexOf("msie 7.0") > -1); 
+ }
+ if (location.href.indexOf('UnsupportedBrowserErrorView') == -1 && (ie6 || ie7)) {
+	 document.write('<meta http-equiv="Refresh" content="0;URL=<c:out value="${unsupportedBrowserErrorUrl}"/>"/>');
+ }
+</script>
+
+<flow:ifEnabled feature="Analytics">
+	<%-- The CM header tag must be in the <head> tag of the JSP --%>
+	<cm:output section="header" />
+</flow:ifEnabled>
+
+<script type="text/javascript">
+	dojo.addOnLoad(function() { 
+		shoppingActionsJS.setCommonParameters('<c:out value="${langId}"/>','<c:out value="${storeId}" />','<c:out value="${catalogId}" />','<c:out value="${userType}" />','<c:out value="${env_CurrencySymbolToFormat}" />');
+		
+		var isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+		var isSafari = /Safari/.test(navigator.userAgent) && /Apple Computer/.test(navigator.vendor);
+
+		if (isChrome || isSafari) {
+			var hiddenFields = dojo.query('input[type=\"hidden\"]');
+			for (var i = 0; i < hiddenFields.length; i++) {
+				hiddenFields[i].autocomplete="off"
+			}
+		}
+		if (dojo.has("ios") || dojo.has("android")){
+			dojo.attr(dojo.body(),"data-wc-device","mobile");
+		}		
+	});
+</script>
+
+<c:if test="${env_inPreview}">
+
+	<%@ page import="com.ibm.commerce.foundation.internal.common.config.ConfigConstants" %>
+	<%@ page import="com.ibm.commerce.foundation.common.config.ComponentConfigurationRegistry" %>
+	<%
+		String CI_HostnamePort = ComponentConfigurationRegistry.instance().getComponentConfiguration(ConfigConstants.FOUNDATION_COMP_ID).getValueByConfigGroupingNameAndPropertyName("HttpSecuritySettings_Rest", "CORSAccessControlAllowOrigin");
+		pageContext.setAttribute("ci_hostname_and_port", CI_HostnamePort);
+	%>
+
+	<script type="text/javascript">
+		dojo.addOnLoad(function() {
+			window.addEventListener("message", receive);
+			var ci_hostname = "<c:out value='${ci_hostname_and_port}'/>";
+			if (ci_hostname) {
+				var hostnames = ci_hostname.split(",");
+				for (var i = 0; i < hostnames.length; i++) {
+					parent.postMessage(JSON.stringify({cmd:'connect'}), hostnames[i].trim());
+				}				
+			}
+		});
+	</script>
+</c:if>
+
+<c:set var="extensionJSPIdentifier" value="wc.pgl.jspIncludeHead_" />
+<%@ include file="JSPFExtToInclude.jspf"%>
+<!-- END CommonJSToInclude.jspf -->

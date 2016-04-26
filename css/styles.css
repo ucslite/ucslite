@@ -9,7 +9,7 @@
  * US Government Users Restricted Rights - Use, duplication or
  * disclosure restricted by GSA ADP Schedule Contract with
  * IBM Corp.
- *------------------------------server files-----------------------------------
+ *--------------------------------------------------------------
  */
 body {
 	position: relative;
@@ -8509,7 +8509,7 @@ a#RegisteredCustomersList_form_botton_2 {
 }
 .loginPanelStates input[type="radio"]:checked + label:before {
     color: #F3F3F3;
-    content: "•";
+    content: "Â•";
     font-size: 30px;
     line-height: 18px;
     padding-right: 1px;
